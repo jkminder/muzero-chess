@@ -1,3 +1,20 @@
+# Muzero Chess
+A friend of mine is always bragging about his chess skills. I wanna build a chess bot that beats him!;)
+
+## Description
+The goal is to use DeepMinds MuZero [[1]](#1) architecture to learn both environment and agent. I will primarily rely on [Werner Duvaud](https://github.com/werner-duvaud)s implementation of MuZero [muzero-general](https://github.com/werner-duvaud/muzero-general), a more general implementation of the paper.
+
+[This article](https://medium.com/applied-data-science/alphago-zero-explained-in-one-diagram-365f5abf67e0) gives a great overview over the functionality of AlphaZero [[3]](#3).
+
+## References
+
+<a id="1">[1]</a> 
+Julian Schrittwieser, Ioannis Antonoglou, Thomas Hubert, Karen Simonyan, Laurent Sifre, Simon Schmitt, Arthur Guez, Edward Lockhart, Demis Hassabis, Thore Graepel, Timothy P. Lillicrap, and David Silver, **Mastering atari, go, chess and shogi by planning with a learned model**, CoRR abs/1911.08265 (2019).
+
+<a id="2">[2]</a>  David Silver, Aja Huang, Christopher Maddison, Arthur Guez, Laurent Sifre, George Driess- che, Julian Schrittwieser, Ioannis Antonoglou, Veda Panneershelvam, Marc Lanctot, Sander Dieleman, Dominik Grewe, John Nham, Nal Kalchbrenner, Ilya Sutskever, Timothy Lillicrap, Madeleine Leach, Koray Kavukcuoglu, Thore Graepel, and Demis Hassabis, **Mastering the game of go with deep neural networks and tree search**, Nature 529 (2016), 484–489.
+
+<a id="3">[3]</a>  David Silver, Thomas Hubert, Julian Schrittwieser, Ioannis Antonoglou, Matthew Lai, Arthur Guez, Marc Lanctot, Laurent Sifre, Dharshan Kumaran, Thore Graepel, Timothy P. Lillicrap, Karen Simonyan, and Demis Hassabis, **Mastering chess and shogi by self-play with a general reinforcement learning algorithm**, CoRR abs/1712.01815 (2017).
+
 ![supported platforms](https://img.shields.io/badge/platform-Linux%20%7C%20Mac%20%7C%20Windows%20(soon)-929292)
 ![supported python versions](https://img.shields.io/badge/python-%3E%3D%203.6-306998)
 ![dependencies status](https://img.shields.io/badge/dependencies-up%20to%20date-brightgreen)
