@@ -18,7 +18,6 @@ class MuZeroNetwork:
             config.resnet_fc_reward_layers,
             config.resnet_fc_value_layers,
             config.resnet_fc_policy_layers,
-            config.downsample,
         )
     
 
@@ -92,7 +91,6 @@ class RepresentationNetwork(torch.nn.Module):
         stacked_observations,
         num_blocks,
         num_channels,
-        downsample,
     ):
         super().__init__()
         self.conv = conv3x3(
@@ -105,12 +103,9 @@ class RepresentationNetwork(torch.nn.Module):
         )
 
     def forward(self, x):
-        if self.downsample:
-            x = self.downsample_net(x)
-        else:
-            x = self.conv(x)
-            x = self.bn(x)
-            x = torch.nn.functional.relu(x)
+        x = self.conv(x)
+        x = self.bn(x)
+        x = torch.nn.functional.relu(x)
 
         for block in self.resblocks:
             x = block(x)
@@ -151,6 +146,7 @@ class DynamicsNetwork(torch.nn.Module):
         x = self.conv1x1_reward(x)
         x = x.view(-1, self.block_output_size_reward)
         reward = self.fc(x)
+        reward = torch.nn.functional.tanh(reward)
         return state, reward
 
 
@@ -191,6 +187,7 @@ class PredictionNetwork(torch.nn.Module):
         value = value.view(-1, self.block_output_size_value)
         policy = policy.view(-1, self.block_output_size_policy)
         value = self.fc_value(value)
+        value = torch.nn.functional.tanh(value)
         policy = self.fc_policy(policy)
         return policy, value
 
@@ -209,39 +206,20 @@ class MuZeroResidualNetwork(AbstractNetwork):
         fc_reward_layers,
         fc_value_layers,
         fc_policy_layers,
-        downsample,
     ):
         super().__init__()
         self.action_space_size = action_space_size
 
         block_output_size_reward = (
-            (
-                reduced_channels_reward
-                * math.ceil(observation_shape[1] / 16)
-                * math.ceil(observation_shape[2] / 16)
-            )
-            if downsample
-            else (reduced_channels_reward * observation_shape[1] * observation_shape[2])
+            (reduced_channels_reward * observation_shape[1] * observation_shape[2])
         )
 
         block_output_size_value = (
-            (
-                reduced_channels_value
-                * math.ceil(observation_shape[1] / 16)
-                * math.ceil(observation_shape[2] / 16)
-            )
-            if downsample
-            else (reduced_channels_value * observation_shape[1] * observation_shape[2])
+            (reduced_channels_value * observation_shape[1] * observation_shape[2])
         )
 
         block_output_size_policy = (
-            (
-                reduced_channels_policy
-                * math.ceil(observation_shape[1] / 16)
-                * math.ceil(observation_shape[2] / 16)
-            )
-            if downsample
-            else (reduced_channels_policy * observation_shape[1] * observation_shape[2])
+            (reduced_channels_policy * observation_shape[1] * observation_shape[2])
         )
 
         self.representation_network = torch.nn.DataParallel(
@@ -250,7 +228,6 @@ class MuZeroResidualNetwork(AbstractNetwork):
                 stacked_observations,
                 num_blocks,
                 num_channels,
-                downsample,
             )
         )
 
