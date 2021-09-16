@@ -74,7 +74,7 @@ class Trainer:
             (
                 total_loss,
                 value_loss,
-                reward_loss,
+                #reward_loss,
                 policy_loss,
             ) = self.update_weights(batch)
 
@@ -96,7 +96,7 @@ class Trainer:
                     "lr": self.optimizer.param_groups[0]["lr"],
                     "total_loss": total_loss,
                     "value_loss": value_loss,
-                    "reward_loss": reward_loss,
+                    #"reward_loss": reward_loss,
                     "policy_loss": policy_loss,
                 }
             )
@@ -137,7 +137,7 @@ class Trainer:
         observation_batch = torch.tensor(observation_batch).float().to(device)
         action_batch = torch.tensor(action_batch).long().to(device).unsqueeze(-1)
         target_value = torch.tensor(target_value).float().to(device)
-        target_reward = torch.tensor(target_reward).float().to(device)
+        #target_reward = torch.tensor(target_reward).float().to(device)
         target_policy = torch.tensor(target_policy).float().to(device)
         gradient_scale_batch = torch.tensor(gradient_scale_batch).float().to(device)
         # observation_batch: batch, channels, height, width
@@ -170,10 +170,10 @@ class Trainer:
         # Ignore reward loss for the first batch step
         current_value_loss, _, current_policy_loss = self.loss_function(
             value.squeeze(-1),
-            reward.squeeze(-1),
+            #reward.squeeze(-1),
             policy_logits,
             target_value[:, 0],
-            target_reward[:, 0],
+            #target_reward[:, 0],
             target_policy[:, 0],
         )
         value_loss += current_value_loss
@@ -183,14 +183,14 @@ class Trainer:
             value, reward, policy_logits = predictions[i]
             (
                 current_value_loss,
-                current_reward_loss,
+                #current_reward_loss,
                 current_policy_loss,
             ) = self.loss_function(
                 value.squeeze(-1),
-                reward.squeeze(-1),
+                #reward.squeeze(-1),
                 policy_logits,
                 target_value[:, i],
-                target_reward[:, i],
+                #target_reward[:, i],
                 target_policy[:, i],
             )
 
@@ -198,20 +198,21 @@ class Trainer:
             current_value_loss.register_hook(
                 lambda grad: grad / gradient_scale_batch[:, i]
             )
-            current_reward_loss.register_hook(
-                lambda grad: grad / gradient_scale_batch[:, i]
-            )
+            # Reward Loss is omitted for board games
+            #current_reward_loss.register_hook(
+            #    lambda grad: grad / gradient_scale_batch[:, i]
+            #)
             current_policy_loss.register_hook(
                 lambda grad: grad / gradient_scale_batch[:, i]
             )
 
             value_loss += current_value_loss
-            reward_loss += current_reward_loss
+            #reward_loss += current_reward_loss
             policy_loss += current_policy_loss
 
 
         # Scale the value loss, paper recommends by 0.25 (See paper appendix Reanalyze)
-        loss = value_loss * self.config.value_loss_weight + reward_loss + policy_loss
+        loss = value_loss * self.config.value_loss_weight + policy_loss # + reward_loss Reward loss is omitted 
         if self.config.PER:
             # Correct PER bias by using importance-sampling (IS) weights
             loss *= weight_batch
@@ -228,7 +229,7 @@ class Trainer:
             # For log purpose
             loss.item(),
             value_loss.mean().item(),
-            reward_loss.mean().item(),
+            #reward_loss.mean().item(),
             policy_loss.mean().item(),
         )
 
@@ -245,16 +246,17 @@ class Trainer:
     @staticmethod
     def loss_function(
         value,
-        reward,
+        #reward,
         policy_logits,
         target_value,
-        target_reward,
+        #target_reward,
         target_policy,
     ):
+        # Reward Loss is omitted for board games
         # Cross-entropy seems to have a better convergence than MSE
         value_loss = (-target_value * torch.nn.LogSoftmax(dim=1)(value)).sum(1)
-        reward_loss = (-target_reward * torch.nn.LogSoftmax(dim=1)(reward)).sum(1)
-        policy_loss = (-target_policy * torch.nn.LogSoftmax(dim=1)(policy_logits)).sum(
-            1
-        )
-        return value_loss, reward_loss, policy_loss
+        #reward_loss = (-target_reward * torch.nn.LogSoftmax(dim=1)(reward)).sum(1)
+        policy_loss = (-target_policy * torch.nn.LogSoftmax(dim=1)(policy_logits)).sum(1)
+
+        #return value_loss, reward_loss, policy_loss
+        return value_loss, policy_loss
