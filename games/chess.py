@@ -82,7 +82,7 @@ class MuZeroConfig:
         ### Replay Buffer
         self.replay_buffer_size = int(1e6)  # Number of self-play games to keep in the replay buffer
         self.num_unroll_steps = 5  # Number of game moves to keep for every batch element
-        self.td_steps = 50  # Number of steps in the future to take into account for calculating the target value
+        self.td_steps = None  # Number of steps in the future to take into account for calculating the target value, None for Monte Carlo
         self.PER = False  # Prioritized Replay (See paper appendix Training), select in priority the elements in the replay buffer which are unexpected for the network
         self.PER_alpha = 0.5  # How much prioritization is used, 0 corresponding to the uniform case, paper suggests 1
 
@@ -123,6 +123,7 @@ class Game(AbstractGame):
         self.env = gym.make("ChessAlphaZero-v0")
         if seed is not None:
             self.env.seed(seed)
+        self.player = 0
 
         
 
@@ -143,6 +144,8 @@ class Game(AbstractGame):
         Returns:
             The new observation, the reward and a boolean if the game has ended.
         """
+        self.player += 1
+        self.player %= 2
         observation, reward, done, _ = self.env.step(action)
         return np.array([[self._transpose(observation)]]), reward, done
 
@@ -157,7 +160,7 @@ class Game(AbstractGame):
         Returns:
             An array of integers, subset of the action space.
         """
-        return self.env.legal_actions 
+        return self.env.legal_actions
 
     def reset(self):
         """
@@ -166,6 +169,7 @@ class Game(AbstractGame):
         Returns:
             Initial observation of the game.
         """
+        self.player = 0
         return np.array([[self._transpose(self.env.reset())]])
 
     def close(self):
@@ -180,15 +184,3 @@ class Game(AbstractGame):
         """
         self.env.render()
         input("Press enter to take a step ")
-
-    def action_to_string(self, action_number):
-        """
-        Convert an action number to a string representing the action.
-
-        Args:
-            action_number: an integer from the action space.
-
-        Returns:
-            String representing the action.
-        """
-        return f"{action_number}. {actions[action_number]}"

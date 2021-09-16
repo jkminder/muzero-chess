@@ -222,6 +222,10 @@ class ReplayBuffer:
     def compute_target_value(self, game_history, index):
         # The value target is the discounted root value of the search tree td_steps into the
         # future, plus the discounted sum of all rewards until then.
+
+        # Use Monte Carlo for Board Games
+        if self.td_steps is None:
+            self.td_steps = len(game_history.reward_history)
         bootstrap_index = index + self.config.td_steps
         if bootstrap_index < len(game_history.root_values):
             root_values = (
