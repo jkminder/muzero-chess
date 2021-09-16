@@ -18,7 +18,6 @@ class MuZeroNetwork:
             config.resnet_fc_reward_layers,
             config.resnet_fc_value_layers,
             config.resnet_fc_policy_layers,
-            config.support_size,
             config.downsample,
         )
     
@@ -210,7 +209,6 @@ class MuZeroResidualNetwork(AbstractNetwork):
         fc_reward_layers,
         fc_value_layers,
         fc_policy_layers,
-        support_size,
         downsample,
     ):
         super().__init__()
@@ -314,8 +312,24 @@ class MuZeroResidualNetwork(AbstractNetwork):
         return encoded_state_normalized
 
     def dynamics(self, encoded_state, action):
+        # Stack encoded_state with a game specific one hot encoded action (See paper appendix Network Architecture)
+        action_one_hot = (
+            torch.ones(
+                (
+                    encoded_state.shape[0],
+                    1,
+                    encoded_state.shape[2],
+                    encoded_state.shape[3],
+                )
+            )
+            .to(action.device)
+            .float()
+        )
+        action_one_hot = (
+            action[:, :, None, None] * action_one_hot / self.action_space_size
+        )
         # stack action with encoded state
-        x = torch.cat((encoded_state, action), dim=1)
+        x = torch.cat((encoded_state, action_one_hot), dim=1)
         next_encoded_state, reward = self.dynamics_network(x)
 
         # Scale encoded state between [0, 1] (See paper appendix Training)

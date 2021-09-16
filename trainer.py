@@ -72,16 +72,11 @@ class Trainer:
             next_batch = replay_buffer.get_batch.remote()
             self.update_lr()
             (
-                priorities,
                 total_loss,
                 value_loss,
                 reward_loss,
                 policy_loss,
             ) = self.update_weights(batch)
-
-            if self.config.PER:
-                # Save new priorities in the replay buffer (See https://arxiv.org/abs/1803.00933)
-                replay_buffer.update_priorities.remote(priorities, index_batch)
 
             # Save to the shared storage
             if self.training_step % self.config.checkpoint_interval == 0:
@@ -136,10 +131,6 @@ class Trainer:
             gradient_scale_batch,
         ) = batch
 
-        # Keep values as scalars for calculating the priorities for the prioritized replay
-        target_value_scalar = numpy.array(target_value, dtype="float32")
-        priorities = numpy.zeros_like(target_value_scalar)
-
         device = next(self.model.parameters()).device
         if self.config.PER:
             weight_batch = torch.tensor(weight_batch.copy()).float().to(device)
@@ -156,10 +147,6 @@ class Trainer:
         # target_policy: batch, num_unroll_steps+1, len(action_space)
         # gradient_scale_batch: batch, num_unroll_steps+1
 
-        target_value = models.scalar_to_support(target_value, self.config.support_size)
-        target_reward = models.scalar_to_support(
-            target_reward, self.config.support_size
-        )
         # target_value: batch, num_unroll_steps+1, 2*support_size+1
         # target_reward: batch, num_unroll_steps+1, 2*support_size+1
 
@@ -191,18 +178,6 @@ class Trainer:
         )
         value_loss += current_value_loss
         policy_loss += current_policy_loss
-        # Compute priorities for the prioritized replay (See paper appendix Training)
-        pred_value_scalar = (
-            models.support_to_scalar(value, self.config.support_size)
-            .detach()
-            .cpu()
-            .numpy()
-            .squeeze()
-        )
-        priorities[:, 0] = (
-            numpy.abs(pred_value_scalar - target_value_scalar[:, 0])
-            ** self.config.PER_alpha
-        )
 
         for i in range(1, len(predictions)):
             value, reward, policy_logits = predictions[i]
@@ -234,18 +209,6 @@ class Trainer:
             reward_loss += current_reward_loss
             policy_loss += current_policy_loss
 
-            # Compute priorities for the prioritized replay (See paper appendix Training)
-            pred_value_scalar = (
-                models.support_to_scalar(value, self.config.support_size)
-                .detach()
-                .cpu()
-                .numpy()
-                .squeeze()
-            )
-            priorities[:, i] = (
-                numpy.abs(pred_value_scalar - target_value_scalar[:, i])
-                ** self.config.PER_alpha
-            )
 
         # Scale the value loss, paper recommends by 0.25 (See paper appendix Reanalyze)
         loss = value_loss * self.config.value_loss_weight + reward_loss + policy_loss
@@ -262,7 +225,6 @@ class Trainer:
         self.training_step += 1
 
         return (
-            priorities,
             # For log purpose
             loss.item(),
             value_loss.mean().item(),
